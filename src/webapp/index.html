@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Photometry</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="css/bootstrap-theme.min.css">
+
+    <!--<script type="text/javascript" src="Chart.js"></script>-->
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.js"></script>
+    <script type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var measurementNumber = 0;
+            $("#plus").click(function () {
+                measurementNumber = measurementNumber + 1
+                var measurementElement = "<div class=\"col-md-2\"> " +
+                    "<h4 class=\"text-center\">Measurment " + measurementNumber + " </h4>" +
+                    "<form>" +
+                    "<div class=\"col-md-12\">" +
+                    "<div class=\"form-horizontal\">" +
+                    "<div class=\"form-group\"  name=\"Measurment" + measurementNumber + "-\" >" +
+                    "<div class=\"col-md-12\">" +
+                    "<label for=\"Xvalue\">X </label>" +
+                    "<input type=\"number\" class=\"form-control\" id=\"Xvalue\" name=\"" + measurementNumber + "-xvalue\" placeholder=\"0\">" +
+                    "</div>" +
+                    "<div class=\"col-md-12\">" +
+                    "<label for=\"y1\">Y1 </label>" +
+                    "<input type=\"number\" class=\"form-control\" id=\"y1\" name=\"" + measurementNumber + "-firstReadout\" placeholder=\"0\">" +
+                    "</div>" +
+                    "<div class=\"col-md-12\">" +
+                    "<label for=\"y2\">Y2 </label>" +
+                    "<input type=\"number\" class=\"form-control\" id=\"y2\" name=\"" + measurementNumber + "-secondReadout\" placeholder=\"0\">" +
+                    "</div>" +
+                    "<div class=\"col-md-12\">" +
+                    "<label for=\"y3\">Y3 </label>" +
+                    "<input type=\"number\" class=\"form-control\" id=\"y3\" name=\"" + measurementNumber + "-thirdReadout\" placeholder=\"0\">" +
+                    "</div>" +
+                    "</div>" +
+                    "</div>" +
+                    "</div>" +
+                    "</form>" +
+                    "</div>";
+                $("#measurement").append(measurementElement);
+            });
+            $("#submit").click(function () {
+                var x = $('form').serializeArray();
+                var results = {};
+                var measurements = [];
+                var xvalues = [];
+                var size = x.length / 4;
+                for (var i = 1; i <= size; i++) {
+                    var xvalue = i + "-xvalue";
+                    var firstReadout = i + "-firstReadout";
+                    var secondReadout = i + "-secondReadout";
+                    var thirdReadout = i + "-thirdReadout";
+                    var measurement = {};
+                    console.log(name)
+                    $.each(x, function (c, field) {
+                        switch (field.name) {
+                            case xvalue:
+                                xvalues.push(field.value);
+                                break;
+                            case firstReadout:
+                                measurement["firstReadout"] = field.value;
+                                break;
+                            case secondReadout:
+                                measurement["secondReadout"] = field.value;
+                                break;
+                            case thirdReadout:
+                                measurement["thirdReadout"] = field.value;
+                                break;
+                        }
+                    });
+
+                    measurements.push(measurement);
+                }
+                 $.each(x, function(i, field){
+                  measurements[field.name] = field.value;
+                 results["measurements"]+=measurements;
+                });
+                results["xvalues"] = xvalues;
+                results["measurements"] = measurements;
+                console.log(results);
+
+                var jqxhr = $.ajax({
+                    type: "POST",
+                    url: "/dencitypost",
+                    data: JSON.stringify(results),
+                    contentType: "application/json; charset=utf-8",
+                    crossDomain: true,
+                    dataType: "json"
+
+                });
+                jqxhr.complete(function (msg) {
+                    $("#result").append(msg.responseText);
+                    console.log(msg.responseText);
+                    var allGraphValues = JSON.parse(msg.responseText);
+                    var xDrawValues = allGraphValues["xCalculated"];
+                    var yDrawValues = allGraphValues["yAverage"];
+                    var defaultX = allGraphValues["xvalues"];
+                    console.log("drawing X " + xDrawValues);
+                    console.log("drawing Y " + yDrawValues);
+                    console.log("drawing default X  " + defaultX);
+
+                    var preparedData = [];
+                    var defaultData = [];
+                    $.each(xDrawValues, function(i, field){
+                        var drawObj = {"x":xDrawValues[i],"y":yDrawValues[i]};
+                        var defaultDrawObj = {"x":defaultX[i],"y":yDrawValues[i]};
+                        preparedData.push(drawObj);
+                        defaultData.push(defaultDrawObj);
+                    });
+                    console.log("PREPARED:"+allGraphValues["calculationFunctionDef"]);
+                    drawLinearGraph(xDrawValues, yDrawValues,preparedData,defaultData,defaultX);
+                    createResultsTable(yDrawValues,xDrawValues,defaultX);
+                    addResultingValues(allGraphValues);
+                });
+
+                function drawLinearGraph(xDrawValues, yDrawValues,preparedData,defaultData,defaultX) {
+                    var ctx = document.getElementById("myChart");
+                    var data = {
+                        labels: defaultX,
+                        datasets: [
+                            {
+                                label: "X нормал",
+                                fill: false,
+                                lineTension: 0,
+                                backgroundColor: "#a3ffc7",
+                                borderColor: "#a9e2b9",
+                                borderCapStyle: 'butt',
+                                borderDash: [],
+                                borderDashOffset: 0,
+                                borderJoinStyle: 'bevel',
+                                pointBorderColor: "rgba(75,192,192,1)",
+                                pointBackgroundColor: "#fff",
+                                pointBorderWidth: 1,
+                                pointHoverRadius: 5,
+                                pointHoverBackgroundColor: "rgba(75,192,192,1)",
+                                pointHoverBorderColor: "rgba(220,220,220,1)",
+                                pointHoverBorderWidth: 2,
+                                pointRadius: 10,
+                                pointHitRadius: 15,
+                                data: preparedData,//xDrawValues,
+                                spanGaps: true,
+                                cubicInterpolationMode:"monotone"
+                            },
+                            {
+                                label: "X",
+                                fill: false,
+                                lineTension: 0.1,
+                                backgroundColor: "rgba(254,133,133,0.4)",
+                                borderColor: "rgba(254,133,133,1)",
+                                borderCapStyle: 'butt',
+                                borderDash: [],
+                                borderDashOffset: 0.1,
+                                borderJoinStyle: 'miter',
+                                pointBorderColor: "rgba(254,133,133,1)",
+                                pointBackgroundColor: "#fff",
+                                pointBorderWidth: 1,
+                                pointHoverRadius: 5,
+                                pointHoverBackgroundColor: "rgba(254,133,133,1)",
+                                pointHoverBorderColor: "rgba(220,220,220,1)",
+                                pointHoverBorderWidth: 2,
+                                pointRadius: 10,
+                                pointHitRadius: 15,
+                                data: defaultData,
+                                spanGaps: true,
+                                showLine: true
+                            }
+                        ]
+                    };
+                    var myChart = new Chart(ctx, {
+                        type: 'scatter',
+                        data: data,
+                        options: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    fontColor: 'rgb(255, 99, 132)'
+                                }
+                            }
+                        }
+                    });
+                };
+                function createResultsTable(xDrawValues, yDrawValues,defaultX) {
+                    var tableHead = "<table class=\"table table-bordered\" id=\"resultsTable\">" +
+                        "<tr id=\"resultsTableHead\"> <td class=\"info\">Y средн</td> <td class=\"success\">X нормал</td> <td class=\"danger\">X</td> </tr>" +
+                        "</table>";
+                    $("#resultsPlace").append(tableHead);
+                    $.each(xDrawValues, function (c, field) {
+                            var tableline = "<tr><td>" + xDrawValues[c] + "</td><td>" + yDrawValues[c] + "</td><td>" + defaultX[c] + "</td></tr>"
+                            $("#resultsTable").append(tableline)
+                        }
+                    );
+                };
+                function addResultingValues(allGraphValues){
+                    var calculationFunctionDefElements = "<table class=\"table table-bordered table-striped\" id=\"middleValues\">" +
+                        "<tr><td>Описание формулы расчета</td><td>" + allGraphValues["calculationFunctionDef"] + "</td></tr>" +
+                        "<tr><td>Формула расчета</td><td>" + allGraphValues["calculationFunctionParsed"] + "</td></tr>" +
+                        "<tr><td>Коэффициент a</td><td>" + allGraphValues["a"]+ "</td></tr>" +
+                        "<tr><td>Коэффициент b</td><td>" + allGraphValues["b"]+ "</td></tr>" +
+                        "<tr><td>Коэффициент b1</td><td>" + allGraphValues["b1"]+ "</td></tr>" +
+                        "<tr><td>Дисперсия разброса</td><td>" + allGraphValues["SOSquare"]+ "</td></tr>" +
+                        "<tr><td>Дисперсия адекватности</td><td>" + allGraphValues["SQDash"]+ "</td></tr>" +
+                        "<tr><td>Дисперсия параметра b</td><td>" + allGraphValues["SB1"]+ "</td></tr>" +
+                        "<tr><td>Доверительный интервал для b</td><td>" + allGraphValues["DeltaB1"]+ "</td></tr>" +
+                        "<tr><td>Доверительный интервал для a</td><td>" + allGraphValues["DeltaA"]+ "</td></tr>" +
+                        "<tr><td>Дисперсия рассеивания эксперим. данных</td><td>" + allGraphValues["SODash2"]+ "</td></tr>" +
+                        "<tr><td>Сумма квадратов</td><td>" + allGraphValues["SQ"]+ "</td></tr>" +
+                        "<tr><td>Коэффициент корреляции</td><td>" + allGraphValues["CorrelationCoef"]+ "</td></tr>" +
+                        "</table>";
+                    $("#middleValues").append(calculationFunctionDefElements);
+                }
+                function addCalcTable(allGraphValues){
+                    var calcTableElements = "<table class=\"table table-bordered table-striped\" id=\"calcTable1\">" +
+                        "<tr><td>CXi</td><td>" + allGraphValues["calculationFunctionDef"] + "</td></tr>" +
+                        "<tr><td>DXi</td><td>" + allGraphValues["calculationFunctionParsed"] + "</td></tr>" +
+                        "</table>";
+                    $("#calcTable").append(calculationFunctionDefElements);
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="text-center">
+                Photometry
+            </h1>
+        </div>
+    </div>
+    <div class="col-md-10" id="measurement">
+    </div>
+    <div class="row">
+        <div class="col-md-2">
+            <button type="button" class="btn default" id="plus">Добавить</button>
+            <button type="submit" class="btn btn-primary" id="submit">Расчет</button>
+        </div>
+    </div>
+    <div class="row">
+
+        <div class="col-md-4" align="left" id="resultsSextion">
+            <div class="col-md-12" align="left" id="resultsPlace">
+            </div>
+            <div class="col-md-12" align="left" id="middleValues">
+            </div>
+            <div class="col-md-12" align="left" id="calcTable">
+            </div>
+        </div>
+
+        <div class="col-md-6" align="right">
+            <canvas id="myChart" width="5" height="5"></canvas>
+        </div>
+
+    </div>
+</body>

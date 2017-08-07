@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Archiver-Version: Plexus Archiver
+Created-By: Apache Maven
+Built-By: dmitriyg
+Build-Jdk: 1.8.0_65
+Specification-Title: Phothometry
+Specification-Version: 1.0.0-SNAPSHOT
+Implementation-Title: Phothometry
+Implementation-Version: 1.0.0-SNAPSHOT
+Implementation-Vendor-Id: com.zieit
+Main-Class: com.zieit.photometry.Photometry
+
